@@ -30,7 +30,7 @@ public class PokemonArena{
 			System.out.print("Select a pokemon [Enter the number next to it's name] [info to ask for info]: ");
 			String line = sc.nextLine(); //line entered
 			if(line.toLowerCase().equals("info")){
-				info(allPkmn,sc); //handles info query
+				reqInfo(allPkmn,sc); //handles info query
 				System.out.println("[Enter to continue]");
 				sc.nextLine();
 				printPokemon(allPkmn); //reprints all Pokemon
@@ -61,8 +61,8 @@ public class PokemonArena{
 		}
 	}
 	
-	public static void info(ArrayList<Pokemon> allPkmn, Scanner sc){
-		//queries info from user about a pokemon
+	public static void reqInfo(ArrayList<Pokemon> allPkmn, Scanner sc){
+		//requests info from user about a pokemon
 		while(true){
 			printPokemon(allPkmn); //prints all pokemon
 			System.out.println("Enter a pokemon's number to get info about it:");
@@ -91,42 +91,45 @@ public class PokemonArena{
 		}
 	}
 
-	public static void info(Pokemon[] allPkmn, Scanner sc){
+	public static void reqInfo(Pokemon[] allPkmn, Scanner sc){
 		//override with primitive array
-		info(new ArrayList<Pokemon>(Arrays.asList(allPkmn)),sc);
+		reqInfo(new ArrayList<Pokemon>(Arrays.asList(allPkmn)),sc);
 	}
 
 	public static void attack(int sel, Pokemon atker, Pokemon target, Scanner sc){
 		//attacks with atker to target with selected move (sel)
-		System.out.printf("%s used %s on %s!\n",atker.getName(),atker.getMoveName(sel),target.getName());
-		//previous statuses so I can print more precisely what the move did
-		boolean wasDisabled = target.getDisabled(); //was it disabled
-		
-		if(atker.getMoveSpecial(sel).equals("recharge")){
-			//displays recharge
-			System.out.println(atker.getName() + " recharged some energy!");
-		}
-		boolean prevStunTime = target.getStunned(); //previous stun timer to check if pokemon was stunned by this attack
-		int dmg = atker.attack(sel,target); //damage done
-		if(!wasDisabled && target.getDisabled()){
-			//if it was not disabled before and it is now we display that it was disabled
-			System.out.println(target.getName() + " was disabled by the attack!");
-		}
-		if(target.getStunned() && !prevStunTime){
-			//target is stunned we display that the target was stunned by this particular attack
-			System.out.println(target.getName() + " got stunned by the attack!");
-		}
-		if(atker.getMissed()){
-			System.out.println(atker.getName() + " missed!");
-		} else if(atker.getTimesHit() > 0){
-			//if we didn't miss and we have more times hit then we had a wild storm attack
-			System.out.println("Hit " + atker.getTimesHit() + " time(s)!"); //prints time hit
-		}
-		if(!atker.getMissed()){
-			//if ally did not miss we print damage
-			if(atker.getEffectiveness() == Pokemon.SUPER_EFFECTIVE) System.out.println("It's super effective!");
-			if(atker.getEffectiveness() == Pokemon.NOT_EFFECTIVE) System.out.println("It's not very effective...");
-			System.out.println(target.getName() + " took " + dmg + " damage!");
+		if(sel == -1 && atker.getHp() > 0){
+			//For enemies only, means no available moves to use so they pass
+			System.out.println(atker.getName() + " passes.");
+		} else if(atker.getStunned() && atker.getHp() > 0){
+			System.out.println(atker.getName() + " is stunned!"); //we don't attack if atker is stunned
+		} else if(atker.getHp() > 0){
+			//if atker is alive we attack with them
+			System.out.printf("%s used %s on %s!\n",atker.getName(),atker.getMoveName(sel),target.getName());
+			//previous statuses so I can print more precisely what the move did
+			boolean wasDisabled = target.getDisabled(); //was it disabled
+			
+			if(atker.getMoveSpecial(sel).equals("recharge")){
+				//displays recharge
+				System.out.println(atker.getName() + " recharged some energy!");
+			}
+			int dmg = atker.attack(sel,target); //damage done
+			if(!wasDisabled && target.getDisabled()){
+				//if it was not disabled before and it is now we display that it was disabled
+				System.out.println(target.getName() + " was disabled by the attack!");
+			}
+			if(atker.getMissed()){
+				System.out.println(atker.getName() + " missed!");
+			} else if(atker.getTimesHit() > 0){
+				//if we didn't miss and we have more times hit then we had a wild storm attack
+				System.out.println("Hit " + atker.getTimesHit() + " time(s)!"); //prints time hit
+			}
+			if(!atker.getMissed()){
+				//if ally did not miss we print damage
+				if(atker.getEffectiveness() == Pokemon.SUPER_EFFECTIVE) System.out.println("It's super effective!");
+				if(atker.getEffectiveness() == Pokemon.NOT_EFFECTIVE) System.out.println("It's not very effective...");
+				System.out.println(target.getName() + " took " + dmg + " damage!");
+			}
 		}
 	}
 	
@@ -162,10 +165,10 @@ public class PokemonArena{
 		System.out.println("Select an ally: ");
 		printPokemon(userPkmn);
 		while(true){
-			System.out.println("Choose an awake pokemon: ");
+			System.out.println("Choose an awake pokemon [info for info]: ");
 			String line = sc.nextLine();
 			if(line.toLowerCase().equals("info")){
-				info(userPkmn,sc);
+				reqInfo(userPkmn,sc);
 			}
 			if(!isNumeric(line)){
 				System.out.println("Enter an integer please"); //makes sure line is an integer
@@ -194,6 +197,8 @@ public class PokemonArena{
 		//prints help
 		System.out.println("QUIT - leaves the game\n"
 			+ "INFO - displays data about any pokemon in the game\n"
+			+ "INFO A - displays data about any alive ally\n"
+			+ "INFO E - displays data about any alive enemy\n"
 			+ "ATTACK - attacks using one the selected pokemon's moves\n"
 			+ "RETREAT - switches out pokemon with another awake pokemon\n"
 			+ "PASS - passes the turn");
@@ -237,35 +242,15 @@ public class PokemonArena{
 			System.exit(0);
 		}
 		Pokemon enemy = getRandomPkmn(otherPkmn,sc); //gets a random enemy from otherPkmn
-		Pokemon ally = getAllyPokemon(userPkmn,sc);; //the ally pokemon on the field at the moment
-		boolean enemyAttack = false; //determines if enemy should attack or not
+		Pokemon ally = getAllyPokemon(userPkmn,sc); //the ally pokemon on the field at the moment
 		while(running){
-			//ENEMY'S ATTACK IF LAST ROUND ALLY PASSED OR RETREATED
-			if(enemyAttack){
-				//handles enemy attack (will occur if ally performed an action that isn't an attack)
-				if(enemy.getStunned()){
-					System.out.println(enemy.getName() + " is stunned!");
-				} else{
-					enemyAttack = false;
-					int enMove = getEnMove(enemy); //gets a random enemy move
-					if(enMove == -1){
-						System.out.println(enemy.getName() + " passes.");
-					} else{
-						//enemy attacks if they didn't pass
-						attack(enMove,enemy,ally,sc); //performs an attack on ally
-					}
-				}
-				//applies turn end
-				for(int i = 0;i < userPkmn.size();i++){
-					userPkmn.get(i).turnEnd();
-				}
-				enemy.turnEnd();
-			}
 			
 			//HANDLES USER INPUT
 			printPokemonData(ally,enemy); //prints only the very basic data for ally and enemy
 			System.out.println("What will you do? [Help for more commands]: ");
 			String comm = sc.nextLine().toLowerCase(); //the command
+			
+			//HANDLES DIFFERENT COMMANDS
 			if(comm.equals("quit")){
 				System.out.println("Good bye! SAYONARA!");
 				running = false;
@@ -274,9 +259,17 @@ public class PokemonArena{
 				System.out.println("[Enter to continue]");
 				sc.nextLine(); //makes user press something before continuing
 			} else if(comm.equals("info")){
-				info(allPkmn,sc);
+				reqInfo(allPkmn,sc);
 				System.out.println("[Enter to continue]");
 				sc.nextLine(); //makes user press something before continuing
+			} else if(comm.equals("info a")){
+				reqInfo(userPkmn,sc);
+				System.out.println("[Enter to continue]");
+				sc.nextLine();
+			} else if(comm.equals("info e")){
+				reqInfo(otherPkmn,sc);
+				System.out.println("[Enter to continue]");
+				sc.nextLine();
 			} else if(comm.equals("attack")){
 				if(ally.getStunned()){
 					System.out.println(ally.getName() + " is stunned!"); //can't attack if we're stunned
@@ -306,24 +299,14 @@ public class PokemonArena{
 							System.out.println("Not enough energy to use that move");
 							continue;
 						}
-						//find enemy's random move
-						int enMove = getEnMove(enemy); //gets a random move for enemy
-						if(enMove == -1){
-							//enemy has no available moves and passes
-							System.out.println(enemy.getName() + " passes.");
-							attack(sel,ally,enemy,sc);
-							break; //we have the ally attack the passing enemy and stop the loop
-						}
 						//now we determine who goes first
 						if(Math.random() >= 0.5){
 							//ally attacks first
 							attack(sel,ally,enemy,sc);
-							if(enemy.getHp() <= 0 || enemy.getStunned()) break; //no attack if fainted or stunned
-							attack(enMove,enemy,ally,sc);
+							attack(getEnMove(enemy),enemy,ally,sc); //performs an attack on ally
 						} else{
-							//ally attacks second	
-							attack(enMove,enemy,ally,sc);
-							if(ally.getHp() <= 0 || ally.getStunned()) break; //we end early if ally faints or is stunned
+							//ally attacks second
+							attack(getEnMove(enemy),enemy,ally,sc); //performs an attack on ally
 							attack(sel,ally,enemy,sc);
 						}
 						break;
@@ -333,25 +316,26 @@ public class PokemonArena{
 				}
 				if(!cancelled){
 					//applies turn end
-					for(int i = 0;i < userPkmn.size();i++){
-						userPkmn.get(i).turnEnd();
-					}
+					for(int i = 0;i < userPkmn.size();i++) userPkmn.get(i).turnEnd();
 					enemy.turnEnd();
 				}
 			} else if(comm.equals("retreat")){
-				ally = null;
-				enemyAttack = true;
+				ally = getAllyPokemon(userPkmn,sc); //gets a new ally
+				attack(getEnMove(enemy),enemy,ally,sc); //performs an attack on ally
+				for(int i = 0;i < userPkmn.size();i++) userPkmn.get(i).turnEnd(); //applies turn end
+				enemy.turnEnd();
 				continue;
 			} else if(comm.equals("pass")){
 				//ally passes
 				System.out.println(ally.getName() + " passes.");
-				enemyAttack = true; //we have enemy attack
+				attack(getEnMove(enemy),enemy,ally,sc); //performs an attack on ally
+				for(int i = 0;i < userPkmn.size();i++) userPkmn.get(i).turnEnd(); //applies turn end
+				enemy.turnEnd();
 			}
-			if(enemy.getHp() <= 0){
+			if(enemy.getHp() == 0){
 				//enemy faints
-				enemyAttack = false; //the enemy won't attack once they're dead
 				otherPkmn.remove(enemy); //removes the enemy
-				System.out.println(enemy.getName() + " has fainted!");
+				System.out.println(enemy.getName() + " has fainted! " + otherPkmn.size() + " remain!");
 				for(int i = 0;i < userPkmn.size();i++){
 					//battle end
 					userPkmn.get(i).battleEnd();
@@ -365,10 +349,9 @@ public class PokemonArena{
 				ally = getAllyPokemon(userPkmn,sc);
 				continue; //continues
 			}
-			if(ally.getHp() <= 0){
+			if(ally.getHp() == 0){
 				//ally faints
 				userPkmn.remove(ally);
-				enemyAttack = false; //enemy does not get free attack on the next pokemon summoned
 				System.out.println(ally.getName() + " has fainted!");
 				System.out.println("[Enter to continue]");
 				sc.nextLine();

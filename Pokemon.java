@@ -70,6 +70,13 @@ class Pokemon{
 		int dmg = move.damage; //damage dealt - can be modified
 		if(energy < move.energy) return 0; //if we don't have enough energy we don't attack
 		setEnergy(energy - move.energy); //removes energy cost from Pokemon's energy
+
+		//DISABLED MODIFIER
+		if(this.disabled){
+			dmg -= 10; //10 less damage if disabled
+			if(dmg < 0)
+				dmg = 0; //prevents negative damage
+		}
 		
 		//CALCULATES RESISTANCES AND WEAKNESSES
 		effectiveness = NORMAL_DAMAGE; //default is normal damage
@@ -80,21 +87,16 @@ class Pokemon{
 			dmg /= 2; //halves if the enemy is resistant to this pokemon
 			effectiveness = NOT_EFFECTIVE;
 		}
-		
-		//DISABLED MODIFIER
-		if(this.disabled){
-			dmg -= 10; //10 less damage if disabled
-			if(dmg < 0)
-				dmg = 0; //prevents negative damage
-		}
 		//SPECIAL EFFECTS
 		String special = move.special; //special effect
 		missed = false; //default is not missed
 		timesHit = 0; //default is hit 0 times
 		if(special.equals("stun")){
 			//50% chance stun for 1 turn (after this one)
-			if(Math.random() >= 0.5)
+			if(Math.random() >= 0.5){
 				enemy.stunned = 2;
+				System.out.println(enemy.getName() + " got stunned by the attack!"); //if stunned we print
+			}
 		} else if(special.equals("wild card")){
 			//50% chance damage is not done
 			if(Math.random() >= 0.5){
@@ -228,7 +230,7 @@ class Pokemon{
 		 	"Number of Attacks: " + numAtks + "\n" +
 		 	moves +
 		 	(disabled?"Disabled\n":"") +
-		 	((stunned>0)?"Stunned\n":"");
+		 	(getStunned()?"Stunned\n":"");
 	}
 	public String getMovesAsString(){
 		//returns a String of the pkmn's attacks
