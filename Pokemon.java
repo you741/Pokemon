@@ -60,12 +60,13 @@ class Pokemon{
 	public boolean canUseAttack(int moveInd){
 		//can the Pokemon use the attack?
 		if(moves[moveInd].energy > this.energy){
-			return false; //can't use the attack
+			return false; //can't use the attack if the energy cost is too high
 		}
-		return true;
+		return true; //we can use the attack otherwise
 	}
 	public int attack(int moveInd, Pokemon enemy){
 		//makes an attack on a pokemon - returns damage
+		if(getStunned()) return 0; //we don't do damage if we're stunned...
 		Move move = moves[moveInd]; //move pokemon is using
 		int dmg = move.damage; //damage dealt - can be modified
 		if(energy < move.energy) return 0; //if we don't have enough energy we don't attack
@@ -93,10 +94,7 @@ class Pokemon{
 		timesHit = 0; //default is hit 0 times
 		if(special.equals("stun")){
 			//50% chance stun for 1 turn (after this one)
-			if(Math.random() >= 0.5){
-				enemy.stunned = 2;
-				System.out.println(enemy.getName() + " got stunned by the attack!"); //if stunned we print
-			}
+			if(Math.random() >= 0.5) enemy.setStunned();
 		} else if(special.equals("wild card")){
 			//50% chance damage is not done
 			if(Math.random() >= 0.5){
@@ -105,42 +103,40 @@ class Pokemon{
 			}
 		} else if(special.equals("wild storm")){
 			//50% chance of hitting and infinite loop
-			int oDmg = dmg; //original dmg - dmg increases by this amount every time we hit
-			dmg = 0; //dmg starts off at 0 as we may have missed
 			while(true){
 				if(Math.random() >= 0.5){
-					dmg += oDmg; //increases dmg
 					timesHit++;
 				} else{
 					if(timesHit == 0) missed = true; //if we never hit once we missed
 					break;
 				}
 			}
+			dmg *= timesHit; //damage multiplied by times hit
 		} else if(special.equals("disable")){
 			//disables enemy
-			enemy.disabled = true;
+			enemy.setDisabled();
 		} else if(special.equals("recharge")){
 			//gains 20 energy
+			System.out.println(name + " recovered some energy!");
 			setEnergy(energy+20);
 		}
 		enemy.setHp(enemy.currHp - dmg); //sets the hp to a value dmg less (does no damage if wild storm)
 		return dmg;
 	}
-	public void turnEnd(){
+	public void endTurn(){
 		//does the necessary stuff when a pokemon ends its turn
 		stunned--; //reduces stun time
 		if (stunned < 0)
 			stunned = 0; //can't have negative stun time
 		setEnergy(energy + 10); //increases energy by 10
 	}
-	public void battleEnd(){
+	public void endBattle(){
 		//does stuff necessary at the end of a battle
 		stunned = 0; //not stunned
 		disabled = false; //sets disabled to false
 		setHp(currHp+20); //heals to 20+
 		setEnergy(50); //sets energy to 50
 	}
-	
 	//SET METHODS
 	public void setHp(int hp){
 		//sets the current hp to the specified value
@@ -162,7 +158,16 @@ class Pokemon{
 		}
 		this.energy = energy;
 	}
-	
+	public void setStunned(){
+		//stuns this pokemon
+		stunned = 2; //sets stunned to 2 (stunned for this turn and the next)
+		System.out.println(name + " got stunned by the attack!"); //if stunned we print
+	}
+	public void setDisabled(){
+		//disables this pokemon
+		disabled = true;
+		System.out.println(name + " got disabled!");
+	}
 	//GET METHODS
 	public String getName(){
 		return name;
@@ -213,10 +218,6 @@ class Pokemon{
 		//gets the name of the ith move
 		return moves[i].name;
 	}
-	public String getMoveSpecial(int i){
-		//gets the special of the ith move
-		return moves[i].special;
-	}
 	//DISPLAY METHODS
 	public String toString(){
 		//String of pokemon's basic data
@@ -242,6 +243,8 @@ class Pokemon{
 		}
 		return movesAsString;
 	}
+	
+	//INNER CLASS MOVE - HOLDS VARIABLES NECESSARY FOR ATTACKS
 	class Move{
 		String name;
 		int energy; //energy it costs
